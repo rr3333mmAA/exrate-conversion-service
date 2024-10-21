@@ -1,4 +1,5 @@
 import asyncio
+from json import JSONDecodeError
 from typing import Optional
 
 import websockets
@@ -37,7 +38,7 @@ async def monitor_heartbeat(websocket):
         if last_heartbeat_received and (datetime.now(UTC).timestamp() - last_heartbeat_received) > HEARTBEAT_TIMEOUT:
             logging.warning("No heartbeat received within 2 seconds. Reconnecting...")
             await websocket.close()
-            return
+            raise ConnectionError("Heartbeat timeout")  # Explicitly raise to break out of the loop
         await asyncio.sleep(1)
 
 
@@ -50,7 +51,10 @@ async def receive_messages(websocket, show_messages=False):
     global last_heartbeat_received
     while True:
         message = await websocket.recv()
-        message = json.loads(message)
+        try:
+            message = json.loads(message)
+        except JSONDecodeError as e:
+            logging.error(f"Error decoding message: {str(e)}. Message: '{message}'")
 
         if message['type'] == 'heartbeat':
             logging.info("Received heartbeat.")
