@@ -7,6 +7,8 @@ import json
 import logging
 from datetime import datetime, UTC
 
+from websockets import ConnectionClosedOK, ConnectionClosedError
+
 from conversion_service.config import HEARTBEAT_INTERVAL, HEARTBEAT_TIMEOUT
 from conversion_service.message_handler import handle_conversion_request
 
@@ -48,23 +50,30 @@ async def receive_messages(websocket, show_messages=False):
     """
     global last_heartbeat_received
     while True:
-        message = await websocket.recv()
         try:
-            message = json.loads(message)
-        except JSONDecodeError as e:
-            logging.error(f"Error decoding message: {str(e)}. Message: '{message}'")
+            message = await websocket.recv()
+            try:
+                message = json.loads(message)
+            except JSONDecodeError as e:
+                logging.error(f"Error decoding message: {str(e)}. Message: '{message}'")
 
-        if message['type'] == 'heartbeat':
-            logging.info("Received heartbeat.")
-            last_heartbeat_received = datetime.now(UTC).timestamp()
-            continue
+            if message['type'] == 'heartbeat':
+                logging.info("Received heartbeat.")
+                last_heartbeat_received = datetime.now(UTC).timestamp()
+                continue
 
-        if message['type'] == 'message':
-            response = await handle_conversion_request(message)
-            if show_messages:
-                logging.info(f"Request message:\n{json.dumps(message, indent=2)}")
-                logging.info(f"Response message:\n{json.dumps(response, indent=2)}")
-            await websocket.send(json.dumps(response))
+            if message['type'] == 'message':
+                response = await handle_conversion_request(message)
+                if show_messages:
+                    logging.info(f"Request message:\n{json.dumps(message, indent=2)}")
+                    logging.info(f"Response message:\n{json.dumps(response, indent=2)}")
+                await websocket.send(json.dumps(response))
+        except ConnectionClosedOK:
+            logging.info("WebSocket connection closed normally.")
+            break
+        except ConnectionClosedError as e:
+            logging.error(f"WebSocket connection closed with error: {str(e)}")
+            break
 
 
 async def websocket_loop(websocket_url, show_messages=False):
