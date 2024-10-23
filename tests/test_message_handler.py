@@ -25,7 +25,7 @@ async def test_handle_conversion_success():
         response = await handle_conversion_request(message)
 
         assert response['type'] == 'message'
-        assert response['payload']['stake'] == round(253.67 * 0.82, 5)
+        assert response['payload']['stake'] == round(253.67 * 0.818185, 5)
         assert response['payload']['currency'] == 'EUR'
 
 

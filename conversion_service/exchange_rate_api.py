@@ -1,3 +1,5 @@
+from typing import Optional
+
 import aiohttp
 import logging
 from cachetools import TTLCache
@@ -6,22 +8,30 @@ from datetime import datetime
 from conversion_service.config import CACHE_TTL, EXCHANGE_ACCESS_KEY, EXCHANGE_RATE_API_URL
 
 # In-memory cache for exchange rates
-exchange_rate_cache = TTLCache(maxsize=100, ttl=CACHE_TTL)
+_default_exchange_rate_cache = TTLCache(maxsize=100, ttl=CACHE_TTL)
 
 
-async def fetch_exchange_rate(from_currency: str, to_currency: str, date: str) -> float:
+async def fetch_exchange_rate(
+        from_currency: str,
+        to_currency: str,
+        date: str,
+        cache: Optional[TTLCache] = None
+) -> float:
     """
     Fetch exchange rate from external API or cache if available.
     :param from_currency: Currency to convert from.
     :param to_currency: Currency to convert to.
     :param date: Date for which to fetch the exchange rate.
+    :param cache: Cache object to use for storing exchange rates.
     :return: Exchange rate.
     """
+    cache = _default_exchange_rate_cache if cache is None else cache  # Use default cache if not provided
+
     # Check if exchange rate is already cached
     cache_key = (from_currency, to_currency, date)
-    if cache_key in exchange_rate_cache:
+    if cache_key in cache:
         logging.info(f"Using cached exchange rate for {from_currency} to {to_currency} on {date}")
-        return exchange_rate_cache[cache_key]
+        return cache[cache_key]
 
     # Format date to match API requirements
     formatted_date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ").strftime("%Y-%m-%d")
@@ -40,7 +50,7 @@ async def fetch_exchange_rate(from_currency: str, to_currency: str, date: str) -
                 data = await response.json()
                 if data.get('success'):
                     rate = data['result']
-                    exchange_rate_cache[cache_key] = rate
+                    cache[cache_key] = rate
                     logging.info(f"Fetched new exchange rate: {rate}")
                     return rate
                 else:
