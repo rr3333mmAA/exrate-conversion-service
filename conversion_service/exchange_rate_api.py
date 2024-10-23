@@ -28,13 +28,13 @@ async def fetch_exchange_rate(
     cache = _default_exchange_rate_cache if cache is None else cache  # Use default cache if not provided
 
     # Check if exchange rate is already cached
-    cache_key = (from_currency, to_currency, date)
+    formatted_date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ").strftime("%Y-%m-%d")
+    cache_key = (from_currency, to_currency, formatted_date)
     if cache_key in cache:
-        logging.info(f"Using cached exchange rate for {from_currency} to {to_currency} on {date}")
+        logging.info(f"Using cached exchange rate for {from_currency} to {to_currency} on {formatted_date}")
         return cache[cache_key]
 
     # Format date to match API requirements
-    formatted_date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ").strftime("%Y-%m-%d")
     params = {
         "access_key": EXCHANGE_ACCESS_KEY,
         "from": from_currency,

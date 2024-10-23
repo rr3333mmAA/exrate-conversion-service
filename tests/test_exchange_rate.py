@@ -54,7 +54,7 @@ async def test_exchange_rate_cache():
         rate = await fetch_exchange_rate(
             from_currency='USD',
             to_currency='EUR',
-            date='2021-05-18T21:32:42.324Z',
+            date='2021-05-18T12:34:56.784Z',
             cache=test_cache
         )
         assert rate == 0.82
